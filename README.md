@@ -1,20 +1,22 @@
-# ha_nordpool_cheapest_hours
+# ha_nordpool_cheapest_intervals
 
-Home Assistant [pyscript](https://hacs-pyscript.readthedocs.io/) automation: turn Shelly switches **on** during the **N cheapest electricity hours** each day, using [Nordpool](https://github.com/custom-components/nordpool) price data.
+Home Assistant [pyscript](https://hacs-pyscript.readthedocs.io/) automation: turn Shelly switches **on** during the **cheapest 15-minute electricity intervals** each day, using [Nordpool](https://github.com/custom-components/nordpool) price data.
+
+Config uses decimal **`cheap_hours`** (each `0.25` = one 15-minute slot; `1.75` = 7 intervals).
 
 Develop on this machine with **Git**, **Cursor**, and **pytest**. Deploy to Home Assistant at `homeassistant.local` with a single script.
 
 ## Repository layout
 
 ```
-ha_nordpool_cheapest_hours/
-├── pyscript/                          # deployed to HA /config/pyscript/
-│   ├── modules/cheapest_hours.py      # pure logic (unit-tested locally)
-│   ├── apps/shelly_cheap_hours/       # pyscript app (triggers + services)
-│   └── config.yaml.example            # copy to config.yaml on HA
-├── scripts/deploy.sh                  # rsync to Home Assistant
-├── tests/                             # pytest (no HA required)
-└── .env.example                       # HA host/user for deploy
+ha_nordpool_cheapest_intervals/
+├── pyscript/                              # deployed to HA /config/pyscript/
+│   ├── modules/cheapest_intervals.py        # pure logic (unit-tested locally)
+│   ├── apps/shelly_cheap_intervals/       # pyscript app (triggers + services)
+│   └── config.yaml.example                # copy to configuration.yaml on HA
+├── scripts/deploy.sh                      # rsync to Home Assistant
+├── tests/                                 # pytest (no HA required)
+└── .env.example                           # HA host/user for deploy
 ```
 
 ## Prerequisites on Home Assistant
@@ -29,8 +31,8 @@ ha_nordpool_cheapest_hours/
 ### 1. Clone (other machines)
 
 ```bash
-git clone https://github.com/jkohvakk/ha_nordpool_cheapest_hours.git
-cd ha_nordpool_cheapest_hours
+git clone https://github.com/jkohvakk/ha_nordpool_cheapest_intervals.git
+cd ha_nordpool_cheapest_intervals
 ```
 
 ### 2. Local Python (tests only)
@@ -44,13 +46,22 @@ pytest -v
 
 ### 3. Configure the app on Home Assistant
 
-Copy `pyscript/config.yaml.example` to **`/config/pyscript/config.yaml`** on HA (merge with existing `pyscript:` section if you already have one). Set:
+Add under **`configuration.yaml`** (or merge into your existing `pyscript:` section):
+
+```yaml
+pyscript:
+  apps:
+    shelly_cheap_intervals:
+      nordpool_sensor: sensor.nordpool_new
+      shelly_switch: switch.shellypro2_ec62608fe9dc_output_1
+      cheap_hours: 1.75   # 7 x 15-minute intervals
+```
 
 | Key | Example | Description |
 |-----|---------|-------------|
-| `nordpool_sensor` | `sensor.nordpool_kwh_fi_eur_3_10_022` | Your Nordpool sensor |
+| `nordpool_sensor` | `sensor.nordpool_new` | Your Nordpool sensor |
 | `shelly_switch` | `switch.shelly_outdoor_plug` | Switch to control |
-| `cheap_hours` | `4` | How many cheapest hours per day to run ON |
+| `cheap_hours` | `1.75` | Decimal hours of cheap intervals per day (`0.25` = one 15-min slot) |
 
 Find entity IDs under **Developer Tools → States**.
 
@@ -65,10 +76,8 @@ chmod +x scripts/deploy.sh
 Ensure SSH works, e.g.:
 
 ```bash
-ssh root@homeassistant.local
+ssh hassio@homeassistant.local
 ```
-
-(Exact user/host depends on your SSH add-on.)
 
 ## Daily workflow
 
@@ -81,8 +90,8 @@ pytest -v
 ./scripts/deploy.sh
 
 # 4. Verify in HA
-#    Developer Tools → Actions → pyscript.shelly_cheap_hours_show_plan
-#    Developer Tools → Actions → pyscript.shelly_cheap_hours_apply_now
+#    Developer Tools → Actions → pyscript.shelly_cheap_intervals_show_cheapest
+#    Developer Tools → Actions → pyscript.shelly_cheap_intervals_apply_now
 ```
 
 Pyscript **auto-reloads** when files under `/config/pyscript/` change (no manual reload needed in normal use).
@@ -91,23 +100,23 @@ Pyscript **auto-reloads** when files under `/config/pyscript/` change (no manual
 
 | Service | Purpose |
 |---------|---------|
-| `pyscript.shelly_cheap_hours_apply_now` | Evaluate cheapest-hour plan and set switch now |
-| `pyscript.shelly_cheap_hours_show_plan` | Log today's cheapest hours without changing switch |
+| `pyscript.shelly_cheap_intervals_apply_now` | Evaluate plan and set switch now |
+| `pyscript.shelly_cheap_intervals_show_cheapest` | Log today's cheapest 15-min intervals with prices |
 
 ## Triggers
 
 | Trigger | When |
 |---------|------|
-| Hourly cron | Top of each hour — switch on/off based on plan |
+| Every 15 minutes (`:00`, `:15`, `:30`, `:45`) | Switch on/off based on plan |
 | 14:00 cron | Log plan after Nordpool refresh (~14:00 Finnish time) |
 
 ## Optional: Jupyter live debugging
 
-If you use the [pyscript Jupyter kernel](https://github.com/craigbarratt/hass-pyscript-jupyter), keep `pyscript.conf` **local only** (listed in `.gitignore`). Use notebooks to inspect live Nordpool attributes; keep source of truth in this repo.
+If you use the [pyscript Jupyter kernel](https://github.com/craigbarratt/hass-pyscript-jupyter), keep `pyscript.conf` **local only** (listed in `.gitignore`).
 
 ## GitHub
 
-Remote: [https://github.com/jkohvakk/ha_nordpool_cheapest_hours](https://github.com/jkohvakk/ha_nordpool_cheapest_hours)
+Remote: [https://github.com/jkohvakk/ha_nordpool_cheapest_intervals](https://github.com/jkohvakk/ha_nordpool_cheapest_intervals)
 
 ```bash
 git add -A && git commit -m "Describe change" && git push
@@ -115,9 +124,12 @@ git add -A && git commit -m "Describe change" && git push
 
 **Do not commit** `.env`, access tokens, or `pyscript.conf`.
 
-## Next steps
+## Migrating from `ha_nordpool_cheapest_hours`
 
-- Replace placeholder entity IDs in `config.yaml` on HA
-- Run `./scripts/deploy.sh` once
-- Call `pyscript.shelly_cheap_hours_show_plan` and check logs
-- Refine rules (time windows, consecutive hours, multiple switches) in issues or with Cursor
+1. Rename the GitHub repository (Settings → General → Repository name).
+2. Update `git remote set-url origin git@github.com:jkohvakk/ha_nordpool_cheapest_intervals.git`
+3. On HA, rename app in `configuration.yaml`: `shelly_cheap_hours` → `shelly_cheap_intervals`
+4. Deploy and remove old `/config/pyscript/apps/shelly_cheap_hours/` on HA
+5. Call **`pyscript.reload`**
+
+Old service names (`pyscript.shelly_cheap_hours_*`) no longer exist.

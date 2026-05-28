@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from cheapest_hours import (
+from cheapest_intervals import (
     build_cheapest_intervals,
     build_cheapest_interval_slots,
     cheap_hours_to_interval_count,

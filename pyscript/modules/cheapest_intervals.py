@@ -1,12 +1,12 @@
 """Pure Python helpers for picking cheapest electricity intervals from Nordpool data.
 
 Works locally (pytest) and inside Home Assistant pyscript when imported from
-``/config/pyscript/modules/cheapest_hours.py``.
+``/config/pyscript/modules/cheapest_intervals.py``.
 
 Nordpool sensor attributes (custom-components/nordpool):
   https://github.com/custom-components/nordpool
 
-Configuration uses decimal *hours* where each 0.25 represents one 15-minute
+Config ``cheap_hours`` uses decimal *hours* where each 0.25 is one 15-minute
 billing interval (e.g. ``1.75`` -> 7 intervals, ``3.25`` -> 13 intervals).
 """
 

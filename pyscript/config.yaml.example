@@ -1,9 +1,9 @@
-# Copy relevant section to /config/pyscript/config.yaml on Home Assistant.
+# Copy relevant section to configuration.yaml on Home Assistant (pyscript: apps:).
 # The app is enabled only when listed under pyscript.apps.
 
 pyscript:
   apps:
-    shelly_cheap_hours:
+    shelly_cheap_intervals:
       # Nordpool sensor entity (Developer Tools -> States)
       nordpool_sensor: sensor.nordpool_kwh_fi_eur_3_10_022
       # Shelly (or any) switch to control
